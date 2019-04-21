@@ -63,6 +63,18 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(users)
 }
 
+func deleteUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+	for index, item := range users {
+		if item.ID == params["id"] {
+			users = append(users[:index], users[index+1:]...)
+			break
+		}
+	}
+	json.NewEncoder(w).Encode(users)
+}
+
 func main() {
 	r := mux.NewRouter()
 
@@ -74,6 +86,7 @@ func main() {
 	r.HandleFunc("/users", getUsers).Methods("GET")
 	r.HandleFunc("/users", createUser).Methods("POST")
 	r.HandleFunc("/users/{id}", updateUser).Methods("PUT")
+	r.HandleFunc("/users/{id}", deleteUser).Methods("DELETE")
 
 	log.Fatal(http.ListenAndServe(":5555", r))
 }
