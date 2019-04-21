@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"log"
+	"math/rand"
 	"net/http"
+	"strconv"
 )
 
 type User struct {
@@ -32,6 +34,16 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(users)
 }
 
+func createUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var user User
+	_ = json.NewDecoder(r.Body).Decode(&user)
+	// ToDo: change algo for database
+	user.ID = strconv.Itoa(rand.Intn(1000000))
+	users = append(users, user)
+	json.NewEncoder(w).Encode(user)
+}
+
 func main() {
 	r := mux.NewRouter()
 
@@ -41,5 +53,6 @@ func main() {
 		Email: "v.poop@mail.ru", Phone: "+7902586867676"})
 
 	r.HandleFunc("/users", getUsers).Methods("GET")
+	r.HandleFunc("/users", createUser).Methods("POST")
 	log.Fatal(http.ListenAndServe(":5555", r))
 }
