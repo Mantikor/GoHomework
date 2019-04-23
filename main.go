@@ -137,7 +137,6 @@ func main() {
 	r.HandleFunc("/accounts/{user_id}/{acc_id}", deleteUserAccount).Methods("DELETE")
 	r.HandleFunc("/accounts/{user_id}/{acc_id}", getUserAccountTransactions).Methods("GET")
 
-	fmt.Println(os.Args)
 	if (len(os.Args) > 1) && (os.Args[1] == "--verbose") {
 		l := log.New(os.Stdout, "[GoHomeWork-Server] - ", 0)
 		l.Printf("Listening 0.0.0.0%s", PORT)
