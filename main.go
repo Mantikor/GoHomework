@@ -13,6 +13,9 @@ import (
 	"time"
 )
 
+const PORT = ":5555"
+
+// TODO use different types for datafields
 type User struct {
 	ID        string `json:"id"`
 	Username  string `json:"username"`
@@ -20,13 +23,19 @@ type User struct {
 	LastName  string `json:"lastname"`
 	Email     string `json:"email"`
 	Phone     string `json:"phone"`
-	Accounts  []Account
 }
 
 type Account struct {
-	ID       string `json:"id"`
-	Balance  string `json:"balance"`
-	Opendate string `json:"opendate"`
+	ID        string `json:"id"`
+	AccountID string `json:"accountid"`
+	Balance   string `json:"balance"`
+	Opendate  string `json:"opendate"`
+}
+
+type Transaction struct {
+	AccountID string `json:"id"`
+	Date      string `json:"date"`
+	Amount    string `json:"amount"`
 }
 
 type RequestLogger struct {
@@ -34,9 +43,8 @@ type RequestLogger struct {
 	l *log.Logger
 }
 
+// TODO for test only, will remove after DB connect
 var users []User
-
-var accounts []Account
 
 func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
@@ -103,26 +111,38 @@ func deleteUserAccount(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "will implement in next version!")
 }
 
+func getUserAccountTransactions(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "will implement in next version!")
+}
+
 func main() {
 	r := mux.NewRouter()
 
 	users = append(users, User{ID: "1", Username: "user1", FirstName: "John", LastName: "Doe",
-		Email: "john.doe@aol.com", Phone: "+190056004", Accounts: []Account{}})
+		Email: "john.doe@aol.com", Phone: "+190056004"})
 	users = append(users, User{ID: "2", Username: "user2", FirstName: "Vasya", LastName: "Pupkin",
-		Email: "v.poop@mail.ru", Phone: "+7902586867676", Accounts: []Account{}})
+		Email: "v.poop@mail.ru", Phone: "+7902586867676"})
 
 	r.HandleFunc("/users", getUsers).Methods("GET")
 	r.HandleFunc("/users", createUser).Methods("POST")
 	r.HandleFunc("/users/{id}", updateUser).Methods("PUT")
 	r.HandleFunc("/users/{id}", deleteUser).Methods("DELETE")
 
-	r.HandleFunc("/accounts/{id}", getUserAccounts).Methods("GET")
-	r.HandleFunc("/accounts/{id}", createUserAccount).Methods("POST")
-	r.HandleFunc("/accounts/{id}", deleteUserAccount).Methods("DELETE")
+	// this call use user_id and print all user accounts
+	r.HandleFunc("/accounts/{user_id}", getUserAccounts).Methods("GET")
+	// create account for user_id
+	r.HandleFunc("/accounts/{user_id}", createUserAccount).Methods("POST")
+	// delete acc_id from user_id
+	// TODO check account balance == ZERO
+	r.HandleFunc("/accounts/{user_id}/{acc_id}", deleteUserAccount).Methods("DELETE")
+	r.HandleFunc("/accounts/{user_id}/{acc_id}", getUserAccountTransactions).Methods("GET")
 
-	//log.Fatal(http.ListenAndServe(":5555", r))
-	// TODO implement -verbose flag
-	l := log.New(os.Stdout, "[GoHomeWork-Server] ", 0)
-	l.Printf("Listening 0.0.0.0%s", ":5555")
-	l.Fatal(http.ListenAndServe(":5555", RequestLogger{h: r, l: l}))
+	fmt.Println(os.Args)
+	if (len(os.Args) > 1) && (os.Args[1] == "--verbose") {
+		l := log.New(os.Stdout, "[GoHomeWork-Server] - ", 0)
+		l.Printf("Listening 0.0.0.0%s", PORT)
+		l.Fatal(http.ListenAndServe(PORT, RequestLogger{h: r, l: l}))
+	} else {
+		log.Fatal(http.ListenAndServe(PORT, r))
+	}
 }
