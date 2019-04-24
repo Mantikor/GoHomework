@@ -137,13 +137,13 @@ func main() {
 	r.HandleFunc("/users/{id}", deleteUser).Methods("DELETE")
 
 	// this call use user_id and print all user accounts
-	r.HandleFunc("/accounts/{user_id}", getUserAccounts).Methods("GET")
+	r.HandleFunc("/users/{user_id}/accounts", getUserAccounts).Methods("GET")
 	// create account for user_id
-	r.HandleFunc("/accounts/{user_id}", createUserAccount).Methods("POST")
+	r.HandleFunc("/users/{user_id}/accounts", createUserAccount).Methods("POST")
 	// delete acc_id from user_id
 	// TODO check account balance == ZERO
-	r.HandleFunc("/accounts/{user_id}/{acc_id}", deleteUserAccount).Methods("DELETE")
-	r.HandleFunc("/accounts/{user_id}/{acc_id}", getUserAccountTransactions).Methods("GET")
+	r.HandleFunc("/users/{user_id}/accounts/{acc_id}", deleteUserAccount).Methods("DELETE")
+	r.HandleFunc("/users/{user_id}/accounts/{acc_id}", getUserAccountTransactions).Methods("GET")
 
 	if (len(os.Args) > 1) && (os.Args[1] == "--verbose") {
 		l := log.New(os.Stdout, "[GoHomeWork-Server] - ", 0)
