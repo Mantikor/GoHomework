@@ -33,8 +33,8 @@ type Account struct {
 }
 
 type Transaction struct {
-	AccountID string `json:"id"`
-	Date      string `json:"date"`
+	AccountID string `json:"accountid"`
+	DateTime  string `json:"date"`
 	Amount    string `json:"amount"`
 }
 
@@ -100,19 +100,27 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUserAccounts(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "will implement in next version!")
+	fmt.Fprint(w, "Will implement in next version, params: ")
+	params := mux.Vars(r)
+	json.NewEncoder(w).Encode(params)
 }
 
 func createUserAccount(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "will implement in next version!")
+	fmt.Fprint(w, "Will implement in next version, params: ")
+	params := mux.Vars(r)
+	json.NewEncoder(w).Encode(params)
 }
 
 func deleteUserAccount(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "will implement in next version!")
+	fmt.Fprint(w, "Will implement in next version, params: ")
+	params := mux.Vars(r)
+	json.NewEncoder(w).Encode(params)
 }
 
 func getUserAccountTransactions(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "will implement in next version!")
+	fmt.Fprint(w, "Will implement in next version, params: ")
+	params := mux.Vars(r)
+	json.NewEncoder(w).Encode(params)
 }
 
 func main() {
