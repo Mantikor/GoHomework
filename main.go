@@ -2,14 +2,14 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
+	_ "github.com/mattn/go-sqlite3"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -17,7 +17,7 @@ const PORT = ":5555"
 
 // TODO use different types for datafields
 type User struct {
-	ID        string `json:"id"`
+	ID        int    `json:"id"`
 	Username  string `json:"username"`
 	FirstName string `json:"firstname"`
 	LastName  string `json:"lastname"`
@@ -26,16 +26,17 @@ type User struct {
 }
 
 type Account struct {
-	ID        string `json:"id"`
-	AccountID string `json:"accountid"`
-	Balance   string `json:"balance"`
-	Opendate  string `json:"opendate"`
+	ID       int    `json:"id"`
+	UserID   int    `json:"accountid"`
+	Balance  int    `json:"balance"`
+	Opendate string `json:"opendate"`
 }
 
 type Transaction struct {
-	AccountID string `json:"accountid"`
+	ID        int    `json:"id"`
+	AccountID int    `json:"accountid"`
 	DateTime  string `json:"date"`
-	Amount    string `json:"amount"`
+	Amount    int    `json:"amount"`
 }
 
 type RequestLogger struct {
@@ -53,50 +54,77 @@ func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	rl.l.Printf("Completed %s %s in %v", r.Method, r.URL.Path, time.Since(start))
 }
 
-func getUsers(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(users)
+func getUsers(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		rows, err := db.Query("SELECT * FROM users")
+		if err != nil {
+			panic(err)
+		}
+		users := []User{}
+		for rows.Next() {
+			p := User{}
+			err := rows.Scan(&p.ID, &p.Username, &p.FirstName, &p.LastName, &p.Email, &p.Phone)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			users = append(users, p)
+		}
+		for _, p := range users {
+			fmt.Fprintln(w, p.ID, p.Username, p.FirstName, p.LastName, p.Email, p.Phone)
+
+			//w.Header().Set("Content-Type", "application/json")
+			//json.NewEncoder(w).Encode(users)
+		}
+	}
 }
 
-func createUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	var user User
-	_ = json.NewDecoder(r.Body).Decode(&user)
-	// TODO change algo for using database
-	user.ID = strconv.Itoa(rand.Intn(1000000))
-	users = append(users, user)
-	json.NewEncoder(w).Encode(user)
+func createUser(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var user User
+		_ = json.NewDecoder(r.Body).Decode(&user)
+		// TODO change algo for using database
+		st, _ := db.Prepare("INSERT INTO users (username, firstname, lastname, email, phone) VALUES (?, ?, ?, ?, ?)")
+		st.Exec(user.Username, user.FirstName, user.LastName, user.Email, user.Phone)
+		// json.NewEncoder(w).Encode(user)
+	}
 }
 
 func updateUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, "Will implement in next version, params: ")
 	params := mux.Vars(r)
-	for index, item := range users {
-		if item.ID == params["id"] {
-			users = append(users[:index], users[index+1:]...)
-			var user User
-			_ = json.NewDecoder(r.Body).Decode(&user)
-			user.ID = params["id"]
-			users = append(users, user)
-			json.NewEncoder(w).Encode(user)
-			return
-		}
-	}
-	// TODO refactor createUser function to assign ID, and remove generaton ID
-	createUser(w, r)
-	json.NewEncoder(w).Encode(users)
+	json.NewEncoder(w).Encode(params)
+	//w.Header().Set("Content-Type", "application/json")
+	//params := mux.Vars(r)
+	//for index, item := range users {
+	//	if item.ID == params["id"] {
+	//		users = append(users[:index], users[index+1:]...)
+	//		var user User
+	//		_ = json.NewDecoder(r.Body).Decode(&user)
+	//		user.ID = params["id"]
+	//		users = append(users, user)
+	//		json.NewEncoder(w).Encode(user)
+	//		return
+	//	}
+	//}
+	//// TODO refactor createUser function to assign ID, and remove generaton ID
+	//json.NewEncoder(w).Encode(users)
 }
 
 func deleteUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, "Will implement in next version, params: ")
 	params := mux.Vars(r)
-	for index, item := range users {
-		if item.ID == params["id"] {
-			users = append(users[:index], users[index+1:]...)
-			break
-		}
-	}
-	json.NewEncoder(w).Encode(users)
+	json.NewEncoder(w).Encode(params)
+	//w.Header().Set("Content-Type", "application/json")
+	//params := mux.Vars(r)
+	//for index, item := range users {
+	//	if item.ID == params["id"] {
+	//		users = append(users[:index], users[index+1:]...)
+	//		break
+	//	}
+	//}
+	//json.NewEncoder(w).Encode(users)
 }
 
 func getUserAccounts(w http.ResponseWriter, r *http.Request) {
@@ -126,13 +154,26 @@ func getUserAccountTransactions(w http.ResponseWriter, r *http.Request) {
 func main() {
 	r := mux.NewRouter()
 
-	users = append(users, User{ID: "1", Username: "user1", FirstName: "John", LastName: "Doe",
+	db, err := sql.Open("sqlite3", "test.db")
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	statement, _ := db.Prepare("CREATE TABLE IF NOT EXISTS users (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, username TEXT NOT NULL, firstname	TEXT, lastname	TEXT, email	TEXT, phone	TEXT)")
+	statement.Exec()
+	statement, _ = db.Prepare("CREATE TABLE IF NOT EXISTS accounts (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, user_id INTEGER, balance	INTEGER, opendate	TEXT)")
+	statement.Exec()
+	statement, _ = db.Prepare("CREATE TABLE IF NOT EXISTS transactions (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, account_id INTEGER, date_time	TEXT, amount INTEGER)")
+	statement.Exec()
+
+	users = append(users, User{ID: 1, Username: "user1", FirstName: "John", LastName: "Doe",
 		Email: "john.doe@aol.com", Phone: "+190056004"})
-	users = append(users, User{ID: "2", Username: "user2", FirstName: "Vasya", LastName: "Pupkin",
+	users = append(users, User{ID: 2, Username: "user2", FirstName: "Vasya", LastName: "Pupkin",
 		Email: "v.poop@mail.ru", Phone: "+7902586867676"})
 
-	r.HandleFunc("/users", getUsers).Methods("GET")
-	r.HandleFunc("/users", createUser).Methods("POST")
+	r.HandleFunc("/users", getUsers(db)).Methods("GET")
+	r.HandleFunc("/users", createUser(db)).Methods("POST")
 	r.HandleFunc("/users/{id}", updateUser).Methods("PUT")
 	r.HandleFunc("/users/{id}", deleteUser).Methods("DELETE")
 
