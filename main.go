@@ -52,7 +52,7 @@ type RequestLogger struct {
 func sendTelegramNotify(ChatId, Url, Token, MessageText string) {
 	data := []byte(`{"chat_id":"` + ChatId + `", "text":"` + MessageText + `"}`)
 	r := bytes.NewReader(data)
-	_, _ = http.Post(Url + Token + "/sendMessage", "application/json", r)
+	_, _ = http.Post(Url+Token+"/sendMessage", "application/json", r)
 }
 
 func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -161,7 +161,7 @@ func getUserAccountTransactions(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	json.NewEncoder(w).Encode(params)
 
-	messageText := "Some message text: " + strconv.Itoa(164646465))
+	messageText := "Some message text: " + strconv.Itoa(164646465)
 	sendTelegramNotify("11111111", "https://api.telegram.org/bot",
 		"777777777:AAAfafuaib95cETvsYFqsqcrwi1K8Z3a4X8", messageText)
 }
