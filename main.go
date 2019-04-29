@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -45,7 +47,13 @@ type RequestLogger struct {
 }
 
 // TODO for test only, will remove after DB connect
-var users []User
+// var users []User
+
+func sendTelegramNotify(ChatId, Url, Token, MessageText string) {
+	data := []byte(`{"chat_id":"` + ChatId + `", "text":"` + MessageText + `"}`)
+	r := bytes.NewReader(data)
+	_, _ = http.Post(Url + Token + "/sendMessage", "application/json", r)
+}
 
 func (rl RequestLogger) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
@@ -63,6 +71,7 @@ func getUsers(db *sql.DB) http.HandlerFunc {
 		users := []User{}
 		for rows.Next() {
 			p := User{}
+			// FIXME Scan error on column index 3, name "lastname": unsupported Scan, storing driver.Value type <nil> into type *string
 			err := rows.Scan(&p.ID, &p.Username, &p.FirstName, &p.LastName, &p.Email, &p.Phone)
 			if err != nil {
 				fmt.Println(err)
@@ -70,6 +79,7 @@ func getUsers(db *sql.DB) http.HandlerFunc {
 			}
 			users = append(users, p)
 		}
+		fmt.Fprintln(w, "ID", "Username", "First Name", "Last Name", "E-mail", "Phone number")
 		for _, p := range users {
 			fmt.Fprintln(w, p.ID, p.Username, p.FirstName, p.LastName, p.Email, p.Phone)
 
@@ -84,9 +94,10 @@ func createUser(db *sql.DB) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		var user User
 		_ = json.NewDecoder(r.Body).Decode(&user)
-		// TODO change algo for using database
+		// TODO check e-mail and phone format
 		st, _ := db.Prepare("INSERT INTO users (username, firstname, lastname, email, phone) VALUES (?, ?, ?, ?, ?)")
 		st.Exec(user.Username, user.FirstName, user.LastName, user.Email, user.Phone)
+		fmt.Fprintln(w, user.ID, user.Username, user.FirstName, user.LastName, user.Email, user.Phone)
 		// json.NewEncoder(w).Encode(user)
 	}
 }
@@ -108,7 +119,6 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
 	//		return
 	//	}
 	//}
-	//// TODO refactor createUser function to assign ID, and remove generaton ID
 	//json.NewEncoder(w).Encode(users)
 }
 
@@ -140,6 +150,7 @@ func createUserAccount(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteUserAccount(w http.ResponseWriter, r *http.Request) {
+	// TODO check account balance == ZERO
 	fmt.Fprint(w, "Will implement in next version, params: ")
 	params := mux.Vars(r)
 	json.NewEncoder(w).Encode(params)
@@ -149,6 +160,10 @@ func getUserAccountTransactions(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Will implement in next version, params: ")
 	params := mux.Vars(r)
 	json.NewEncoder(w).Encode(params)
+
+	messageText := "Some message text: " + strconv.Itoa(164646465))
+	sendTelegramNotify("11111111", "https://api.telegram.org/bot",
+		"777777777:AAAfafuaib95cETvsYFqsqcrwi1K8Z3a4X8", messageText)
 }
 
 func main() {
@@ -167,22 +182,12 @@ func main() {
 	statement, _ = db.Prepare("CREATE TABLE IF NOT EXISTS transactions (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, account_id INTEGER, date_time	TEXT, amount INTEGER)")
 	statement.Exec()
 
-	users = append(users, User{ID: 1, Username: "user1", FirstName: "John", LastName: "Doe",
-		Email: "john.doe@aol.com", Phone: "+190056004"})
-	users = append(users, User{ID: 2, Username: "user2", FirstName: "Vasya", LastName: "Pupkin",
-		Email: "v.poop@mail.ru", Phone: "+7902586867676"})
-
 	r.HandleFunc("/users", getUsers(db)).Methods("GET")
 	r.HandleFunc("/users", createUser(db)).Methods("POST")
 	r.HandleFunc("/users/{id}", updateUser).Methods("PUT")
 	r.HandleFunc("/users/{id}", deleteUser).Methods("DELETE")
-
-	// this call use user_id and print all user accounts
 	r.HandleFunc("/users/{user_id}/accounts", getUserAccounts).Methods("GET")
-	// create account for user_id
 	r.HandleFunc("/users/{user_id}/accounts", createUserAccount).Methods("POST")
-	// delete acc_id from user_id
-	// TODO check account balance == ZERO
 	r.HandleFunc("/users/{user_id}/accounts/{acc_id}", deleteUserAccount).Methods("DELETE")
 	r.HandleFunc("/users/{user_id}/accounts/{acc_id}", getUserAccountTransactions).Methods("GET")
 
